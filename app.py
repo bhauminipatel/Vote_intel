@@ -131,35 +131,76 @@ elif page == "🔮 Prediction":
 
 # --- PAGE: BULK SCANNER ---
 elif page == "🔍 Bulk Scanner":
-    st.title("Search & Advanced Filtering")
+    st.title("📊 VoteIntel Bulk Scanner")
+
+# -----------------------------
+# 🔹 Sample Data Create
+# -----------------------------
+sample_data = pd.DataFrame({
+    "AGE": [45, 50],
+    "ASSETS": [5000000, 2000000],
+    "CRIMINAL CASES": [1, 0],
+    "EDUCATION": ["Graduate", "Post Graduate"],
+    "STATE": ["Gujarat", "Maharashtra"]
+})
+
+# -----------------------------
+# 🔹 Download Buttons
+# -----------------------------
+st.subheader("⬇ Download Sample File")
+
+# CSV
+csv = sample_data.to_csv(index=False).encode('utf-8')
+st.download_button("Download CSV", csv, "sample.csv", "text/csv")
+
+# Excel
+excel_file = "sample.xlsx"
+sample_data.to_excel(excel_file, index=False)
+with open(excel_file, "rb") as f:
+    st.download_button("Download Excel", f, "sample.xlsx")
+
+# JSON
+json_data = sample_data.to_json(orient="records")
+st.download_button("Download JSON", json_data, "sample.json", "application/json")
+
+
+# -----------------------------
+# 🔹 Upload File
+# -----------------------------
+st.subheader("📤 Upload CSV File")
+
+uploaded_file = st.file_uploader("Upload your CSV file", type=["csv"])
+
+# -----------------------------
+# 🔹 Dummy Prediction Function
+# -----------------------------
+def predict(df):
+    # 🔹 Convert column to numeric (IMPORTANT FIX)
+    df["CRIMINAL CASES"] = pd.to_numeric(df["CRIMINAL CASES"], errors='coerce')
+
+    # 🔹 Fill NaN with 0 (optional but recommended)
+    df["CRIMINAL CASES"] = df["CRIMINAL CASES"].fillna(0)
+
+    # 🔹 Prediction logic
+    df["Prediction"] = df["CRIMINAL CASES"].apply(
+        lambda x: "High Risk" if x > 0 else "Low Risk"
+    )
+
+    return df
+# -----------------------------
+# 🔹 Process File
+# -----------------------------
+if uploaded_file is not None:
+    df = pd.read_csv(uploaded_file)
     
-    st.markdown("Use this page to search for specific candidates or filter data by various criteria.")
-    
-    col_a, col_b, col_c = st.columns(3)
-    search_name = col_a.text_input("Search Candidate Name")
-    sel_state = col_b.multiselect("Filter by State", sorted(df['STATE'].unique()))
-    sel_party = col_c.multiselect("Filter by Party", sorted(df['PARTY'].unique()))
+    st.write("📄 Uploaded Data")
+    st.dataframe(df)
 
-    # Filtering Logic
-    filtered_df = df.copy()
-    if search_name:
-        filtered_df = filtered_df[filtered_df['NAME'].str.contains(search_name, case=False)]
-    if sel_state:
-        filtered_df = filtered_df[filtered_df['STATE'].isin(sel_state)]
-    if sel_party:
-        filtered_df = filtered_df[filtered_df['PARTY'].isin(sel_party)]
+    result = predict(df)
 
-    st.write(f"Showing {len(filtered_df)} results.")
-    st.dataframe(filtered_df, use_container_width=True)
+    st.write("✅ Prediction Result")
+    st.dataframe(result)
 
-    # Download Filtered Data
-    csv = filtered_df.to_csv(index=False).encode('utf-8')
-    st.download_button("📥 Download Filtered Results", data=csv, file_name="filtered_election_data.csv", mime="text/csv")
-
-    st.divider()
-    st.subheader("Candidate Comparison")
-    selected_names = st.multiselect("Select 2-3 Candidates to Compare Assets", df['NAME'].unique()[:100])
-    if selected_names:
-        comparison_df = df[df['NAME'].isin(selected_names)]
-        fig_comp = px.bar(comparison_df, x='NAME', y='ASSETS', color='PARTY', barmode='group')
-        st.plotly_chart(fig_comp, use_container_width=True)
+    # Download result
+    result_csv = result.to_csv(index=False).encode('utf-8')
+    st.download_button("⬇ Download Result", result_csv, "result.csv", "text/csv")
